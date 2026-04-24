@@ -47,18 +47,21 @@ export async function POST(request: NextRequest) {
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
-      async start(controller) {
-        for (let i = 0; i < words.length; i++) {
-          const word = (i === 0 ? "" : " ") + words[i];
-          controller.enqueue(encoder.encode(word));
-          // Small delay to simulate streaming (10-40ms per word)
-          await new Promise((resolve) =>
-            setTimeout(resolve, 10 + Math.random() * 30)
-          );
-        }
-        controller.close();
-      },
-    });
+  async start(controller) {
+    for (let i = 0; i < words.length; i++) {
+      const word = (i === 0 ? "" : " ") + words[i];
+      // Send as SSE format: "data: {...}\n\n"
+      const payload = `data: ${JSON.stringify({ token: word })}\n\n`;
+      controller.enqueue(encoder.encode(payload));
+      await new Promise((resolve) =>
+        setTimeout(resolve, 10 + Math.random() * 30)
+      );
+    }
+    // Signal end of stream
+    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+    controller.close();
+  },
+});
 
     return new Response(stream, {
       headers: {
