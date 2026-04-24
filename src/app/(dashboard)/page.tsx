@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";   // ← add this line
 import { useBrainChat } from "@/lib/hooks/use-brain-chat";
+// ... rest of imports
 import { IDEA_CATEGORIES, IDEA_STATUSES, getScoreColor } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -78,19 +80,24 @@ export default function DashboardPage() {
         let signalsToday = 0;
 
         if (scoresRes.ok) {
-          const data = await scoresRes.json();
-          const items = Array.isArray(data) ? data : data.ideas || data.data || [];
-          totalIdeas = items.length || data.totalIdeas || 0;
-          if (items.length > 0) {
-            const scoreSum = items.reduce(
-              (sum: number, i: DashboardIdea) =>
-                sum + parseFloat(i.scoreOverall || "0"),
-              0
-            );
-            avgScore = Math.round(scoreSum / items.length);
-          }
-          avgScore = avgScore || data.avgScore || 0;
-        }
+                const data = await scoresRes.json();
+                const items = Array.isArray(data) ? data : data.ideas || data.data || [];
+
+                // Prefer API aggregate if provided, fall back to computed count
+                totalIdeas = data.totalIdeas ?? data.total ?? items.length;
+
+                // Prefer API aggregate if provided, fall back to computed average
+                if (typeof data.avgScore === "number") {
+                  avgScore = Math.round(data.avgScore);
+                } else if (items.length > 0) {
+                  const scoreSum = items.reduce(
+                    (sum: number, i: DashboardIdea) =>
+                      sum + parseFloat(i.scoreOverall || "0"),
+                    0
+                  );
+                  avgScore = Math.round(scoreSum / items.length);
+                }
+              }
 
         if (sourcesRes.ok) {
           const data = await sourcesRes.json();
@@ -256,7 +263,7 @@ export default function DashboardPage() {
                   const score = parseFloat(idea.scoreOverall || "0");
 
                   return (
-                    <a
+                    <Link
                       key={idea.id}
                       href={`/ideas/${idea.id}`}
                       className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
@@ -312,7 +319,7 @@ export default function DashboardPage() {
                       >
                         {Number(score).toFixed(1)}
                       </div>
-                    </a>
+                    </Link>
                   );
                 })
               )}

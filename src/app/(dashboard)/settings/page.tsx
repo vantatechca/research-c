@@ -1,9 +1,13 @@
+"use client";
+
 import { mockUsers } from "@/mock/data";
+import { signOut } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Settings, User, Users, Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Settings, User, Users, Bell, LogOut } from "lucide-react";
 
 export default function SettingsPage() {
   const currentUser = mockUsers[0];
@@ -135,6 +139,33 @@ export default function SettingsPage() {
               </Badge>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Account */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Sign out of your account</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                You&apos;ll need to log in again to access your workspace.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Log Out
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
