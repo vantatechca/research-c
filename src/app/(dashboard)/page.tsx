@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";   // ← add this line
+import Link from "next/link";
 import { useBrainChat } from "@/lib/hooks/use-brain-chat";
-// ... rest of imports
-import { IDEA_CATEGORIES, IDEA_STATUSES, getScoreColor } from "@/lib/utils/constants";
+import { IDEA_CATEGORIES, IDEA_STATUSES, getScoreColor } from "@/lib/utils/constants"
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
