@@ -90,6 +90,7 @@ export default function CompetitorsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // New competitor form state
   const [newName, setNewName] = useState("");
@@ -169,6 +170,30 @@ export default function CompetitorsPage() {
       setDeletingId(null);
     }
   }
+  async function handleToggleActive(competitorId: string, active: boolean) {
+  setTogglingId(competitorId);
+  
+  // Optimistic update
+  const previous = competitors;
+  setCompetitors((prev) =>
+    prev.map((c) => (c.id === competitorId ? { ...c, active } : c))
+  );
+  
+  try {
+    const res = await fetch(`/api/competitors/${competitorId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ active }),
+    });
+    if (!res.ok) throw new Error("Failed to update competitor");
+    toast.success(active ? "Competitor activated" : "Competitor deactivated");
+  } catch {
+    setCompetitors(previous);
+    toast.error("Failed to update competitor");
+  } finally {
+    setTogglingId(null);
+  }
+}
 
   async function handleAddCompetitor() {
     if (!newName.trim()) return;
@@ -318,15 +343,15 @@ export default function CompetitorsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-8" />
-                <TableHead>Name</TableHead>
-                <TableHead>Platform</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="w-12" />
+                <TableHead className="w-[40%]">Name</TableHead>
+                <TableHead className="w-[15%]">Platform</TableHead>
+                <TableHead className="w-[10%]">Products</TableHead>
+                <TableHead className="w-[15%]">Priority</TableHead>
+                <TableHead className="w-[20%] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody>  
               {competitors.map((comp) => {
                 const isExpanded = expandedIds.has(comp.id || "");
                 const products =
@@ -404,6 +429,8 @@ export default function CompetitorsPage() {
                         >
                           <Switch
                             checked={comp.active ?? true}
+                            onCheckedChange={(checked) => handleToggleActive(comp.id, checked)}
+                            disabled={togglingId === comp.id}
                           />
                           <Button
                             variant="ghost"

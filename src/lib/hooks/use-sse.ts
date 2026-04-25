@@ -102,7 +102,7 @@ export function useSSE<T = Record<string, unknown>>(
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [url, eventTypes]);
+  }, [url, JSON.stringify(eventTypes)]);
 
   return { events, isConnected, error, clearEvents };
 }
