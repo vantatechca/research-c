@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { getScoreColor } from "@/lib/utils/constants";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -70,124 +71,92 @@ export default function AnalyticsPage() {
   });
 
   // Fetch trends
-  useEffect(() => {
-    async function fetchTrends() {
-      try {
-        const res = await fetch("/api/analytics/trends");
-        if (!res.ok) throw new Error("Failed");
-        const data = await res.json();
-        setTrends(
-          Array.isArray(data) ? data : data.trends || data.data || []
-        );
-      } catch {
-        toast.error("Failed to load trends");
-      } finally {
-        setLoading((prev) => ({ ...prev, trends: false }));
-      }
-    }
-    fetchTrends();
-  }, []);
+  // Fetch all analytics data in parallel
+useEffect(() => {
+  async function fetchAll() {
+    try {
+      const [trendsRes, scoresRes, sourcesRes, patternsRes] = await Promise.all([
+        fetch("/api/analytics/trends"),
+        fetch("/api/analytics/scores"),
+        fetch("/api/analytics/sources"),
+        fetch("/api/analytics/patterns"),
+      ]);
 
-  // Fetch scores
-  useEffect(() => {
-    async function fetchScores() {
-      try {
-        const res = await fetch("/api/analytics/scores");
-        if (!res.ok) throw new Error("Failed");
-        const data = await res.json();
+      // Process trends
+      if (trendsRes.ok) {
+        const data = await trendsRes.json();
+        setTrends(Array.isArray(data) ? data : data.trends || data.data || []);
+      }
+      setLoading((prev) => ({ ...prev, trends: false }));
+
+      // Process scores
+      if (scoresRes.ok) {
+        const data = await scoresRes.json();
         const items = Array.isArray(data) ? data : data.ideas || data.data || [];
         setIdeas(
           [...items].sort(
             (a, b) =>
-              parseFloat(b.scoreOverall || "0") -
-              parseFloat(a.scoreOverall || "0")
+              parseFloat(b.scoreOverall || "0") - parseFloat(a.scoreOverall || "0")
           )
         );
-      } catch {
-        toast.error("Failed to load scores");
-      } finally {
-        setLoading((prev) => ({ ...prev, scores: false }));
       }
-    }
-    fetchScores();
-  }, []);
+      setLoading((prev) => ({ ...prev, scores: false }));
 
-  // Fetch sources analytics
-  useEffect(() => {
-    async function fetchSources() {
-      try {
-        const res = await fetch("/api/analytics/sources");
-        if (!res.ok) throw new Error("Failed");
-        const data = await res.json();
+      // Process sources
+      if (sourcesRes.ok) {
+        const data = await sourcesRes.json();
         const items = Array.isArray(data) ? data : data.sources || data.data || [];
         setSources(
-          [...items].sort(
-            (a, b) => (b.signalsTotal || 0) - (a.signalsTotal || 0)
-          )
+          [...items].sort((a, b) => (b.signalsTotal || 0) - (a.signalsTotal || 0))
         );
-      } catch {
-        toast.error("Failed to load sources analytics");
-      } finally {
-        setLoading((prev) => ({ ...prev, sources: false }));
       }
-    }
-    fetchSources();
-  }, []);
+      setLoading((prev) => ({ ...prev, sources: false }));
 
-  // Fetch patterns
-  useEffect(() => {
-    async function fetchPatterns() {
-      try {
-        const res = await fetch("/api/analytics/patterns");
-        if (!res.ok) throw new Error("Failed");
-        const data = await res.json();
-        setPatterns(
-          Array.isArray(data) ? data : data.patterns || data.data || []
-        );
-      } catch {
-        toast.error("Failed to load patterns");
-      } finally {
-        setLoading((prev) => ({ ...prev, learning: false }));
+      // Process patterns
+      if (patternsRes.ok) {
+        const data = await patternsRes.json();
+        setPatterns(Array.isArray(data) ? data : data.patterns || data.data || []);
       }
+      setLoading((prev) => ({ ...prev, learning: false }));
+    } catch {
+      toast.error("Failed to load analytics");
+      setLoading({
+        trends: false,
+        scores: false,
+        sources: false,
+        learning: false,
+      });
     }
-    fetchPatterns();
-  }, []);
+  }
+  fetchAll();
+}, []);
 
   // Process trends into grouped keywords
-  const trendsByKeyword = new Map<
-    string,
-    { keyword: string; latestValue: number; delta: number | null }
-  >();
-  for (const t of trends) {
-    const keyword = t.keyword || "";
-    if (!trendsByKeyword.has(keyword)) {
-      trendsByKeyword.set(keyword, { keyword, latestValue: 0, delta: null });
-    }
-  }
-  // Group by keyword and find latest
-  const keywordEntries = new Map<string, TrendSnapshot[]>();
-  for (const t of trends) {
-    const k = t.keyword || "";
-    if (!keywordEntries.has(k)) keywordEntries.set(k, []);
-    keywordEntries.get(k)!.push(t);
-  }
-  keywordEntries.forEach((entries, keyword) => {
+  // Group trends by keyword and find the latest snapshot per group
+const keywordEntries = new Map<string, TrendSnapshot[]>();
+for (const t of trends) {
+  const k = t.keyword || "";
+  if (!keywordEntries.has(k)) keywordEntries.set(k, []);
+  keywordEntries.get(k)!.push(t);
+}
+
+const trendKeywords = Array.from(keywordEntries.entries()).map(
+  ([keyword, entries]) => {
     const sorted = [...entries].sort(
       (a, b) =>
         new Date(b.capturedAt || 0).getTime() -
         new Date(a.capturedAt || 0).getTime()
     );
-    if (sorted[0]) {
-      trendsByKeyword.set(keyword, {
-        keyword,
-        latestValue: parseFloat(String(sorted[0].value || "0")),
-        delta: sorted[0].deltaPercent
-          ? parseFloat(String(sorted[0].deltaPercent))
-          : null,
-      });
-    }
-  });
-  const trendKeywords = Array.from(trendsByKeyword.values());
+    const latest = sorted[0];
+    return {
+      keyword,
+      latestValue: parseFloat(String(latest?.value || "0")),
+      delta: latest?.deltaPercent
+        ? parseFloat(String(latest.deltaPercent))
+        : null,
+    };
+  }
+);
 
   const maxSignals = sources[0]?.signalsTotal || 1;
 
@@ -329,12 +298,12 @@ export default function AnalyticsPage() {
                         {Number(score).toFixed(1)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <a
+                        <Link
                           href={`/ideas/${idea.id}`}
                           className="text-sm font-medium hover:text-indigo-600 transition-colors truncate block"
                         >
                           {idea.title}
-                        </a>
+                        </Link>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
                             {idea.category?.replace("_", " ")}
