@@ -45,6 +45,7 @@ export function useSSE<T = Record<string, unknown>>(
 
         es.onmessage = (event) => {
           try {
+            
             const parsed = JSON.parse(event.data) as SSEEvent<T>;
             if (!eventTypes || eventTypes.includes(parsed.type)) {
               setEvents((prev) => [parsed, ...prev].slice(0, 100));
@@ -102,7 +103,8 @@ export function useSSE<T = Record<string, unknown>>(
         clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [url, JSON.stringify(eventTypes)]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [url, JSON.stringify(eventTypes)]);
 
   return { events, isConnected, error, clearEvents };
 }
