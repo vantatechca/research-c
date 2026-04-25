@@ -1,7 +1,7 @@
 "use client";
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSSE } from "@/lib/hooks/use-sse";
 import {
   IDEA_CATEGORIES,
@@ -93,10 +93,8 @@ export default function FeedPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // SSE for real-time updates
-  const { events, isConnected } = useSSE<Idea>(
-    "/api/signals/feed",
-    ["new_idea", "idea_updated"]
-  );
+  const eventTypes = useMemo(() => ["new_idea", "idea_updated"], []);
+  const { events, isConnected } = useSSE<Idea>("/api/signals/feed", eventTypes);
 
   // Prepend new ideas from SSE events
   useEffect(() => {
@@ -316,12 +314,12 @@ export default function FeedPage() {
                 <CardContent className="flex-1 space-y-3 pt-0">
                   {/* Title + Score */}
                   <div className="flex items-start justify-between gap-2">
-                    <a
+                    <Link
                       href={`/ideas/${idea.id}`}
                       className="text-sm font-medium hover:text-indigo-600 transition-colors line-clamp-2 flex-1"
                     >
                       {idea.title}
-                    </a>
+                    </Link>
                     <div
                       className={cn(
                         "text-xl font-bold tabular-nums shrink-0 px-2 py-1 rounded-lg border",
